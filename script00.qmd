@@ -242,7 +242,7 @@ le modèle formellement s'écrit[^1] de la manière suivante :
 $$
 y_i=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j} + \epsilon_i
 $$
-où $$y_i$$ représente la valeur de l'individu $$i$$ pour la variable que l'on cherche à expliquer $$y$$. Les $$x_{ij}$$ représentent les valeurs de la variable $$j$$ pour l'individu $$i$$ . Les paramètres $$\beta_j$$ sont les valeurs que l'on cherche à estimer, en minimisant la comme du carrée des erreurs. ( principe des moindres carrés)
+où $y_i$ représente la valeur de l'individu $i$ pour la variable que l'on cherche à expliquer $y$. Les $x_{ij}$ représentent les valeurs de la variable $$j$$ pour l'individu $$i$$ . Les paramètres $$\beta_j$$ sont les valeurs que l'on cherche à estimer, en minimisant la comme du carrée des erreurs. ( principe des moindres carrés)
 
 
 [^1]:Pour écrire des équations en R markdown [voir](<https://rpruim.github.io/s341/S19/from-class/MathinRmd.html>)
