@@ -1,0 +1,273 @@
+---
+title: "Fortune 1000"
+authors:
+  - name: Christophe Benavent
+    department: Department of Computer Science
+    email: Christophe.benavent@dauphine.psl.eu
+    affiliation: Université Dauphine - PSL
+abstract: | 
+  Ce papier introduit à l'utilisation de r dans l'environnement quarto pour les analyses statistiques fondamentales de la recherche en gestion. Il sert aussi de modèle (template) pour les travaux des étudiants.
+  On examine des distributions, on calcule des moyennes, on les compare et on les teste, on calcule des corrélations. On explore quelques techniques d'analyses de données à la française et on conclue sur un peu d'économétrie
+execute:
+  echo: true
+  message: false
+  warning: false
+  code-fold: true
+keywords: 
+  - r stat
+  - ggplot
+  - tests
+  - regression
+  - clustering
+bibliography: biblio.bib
+biblio-style: unsrt
+output: rticles::arxiv_article
+---
+
+{{< pagebreak >}}
+
+# Introduction
+
+Il nous faut des outils et des données. 
+
+## Les packages
+
+Notre boite à outils essentielle est `tidyverse`, de @wickham_welcome_2019. On en découvrira l'[univers ici](https://www.tidyverse.org/packages/)
+
+```{r}
+library(tidyverse) #outil de base(dplyr+ggplot+...)
+library(rstatix) # pour tout les test en tidy...
+library(FactoMineR) #ACP AFC et clustering
+library(factoextra)
+library(flextable) #pour faire de joli tableau
+library(scales) #un accessoire de ggplot
+
+```
+
+## Lecture du fichier
+
+Voici la [source des données](https://www.kaggle.com/datasets/jeannicolasduval/2024-fortune-1000-companies) du Fortune 1000 de 2024 et celle de [2023](https://www.kaggle.com/datasets/jeannicolasduval/2023-fortune-1000-companies-info) . On charge les fichiers et on les compile en un seul `dataframe`
+
+```{r}
+
+df1 <- read_csv("fortune1000_2024.csv")|>
+  mutate(Year="2024") |>
+  select(-Worlds_Most_Admired_Companies)%>%
+  rename(MarketCap_March=MarketCap_March28_M,
+         Best_Companies=Best_Companies_to_Work_For)
+
+df2 <- read_csv("fortune1000_2023.csv")|>
+  mutate(Year="2023")%>%
+  rename(MarketCap_March=MarketCap_March31_M)
+
+df<- rbind(df1,df2)
+
+```
+
+# Analyse univariée
+
+
+## Une variable quantitative
+
+On étudie la capitalisation des entreprises en 2024. Exeminons les statistiques essentielles : les centralités et les dispersions.
+
+```{r}
+mean<-round(mean(df1$MarketCap_March, na.rm=TRUE)/1000,1)
+median<-round(median(df1$MarketCap_March, na.rm=TRUE)/1000,1)
+
+```
+
+
+On obtient donc : 
+
+-  capitalisation moyenne : `{r} mean` milliards de $
+-  capitalisation médiane: `{r} median` milliards de $
+-  écart type : 
+
+La distribution peut être représentée par un simple histogramme.
+
+```{r}
+ggplot(df1, aes(x=MarketCap_March ))+
+  geom_histogram()
+
+```
+ 
+Avec quelques améliorations on obtient ceci:
+
+ 
+```{r}
+ggplot(df1, aes(x=MarketCap_March/1000 ))+ #les données sont en millions , on les transforment en milliards
+  geom_histogram(fill="pink2", alpha=.5)+
+  labs(title="Distribution du chiffre d'affaires des 1000 de Fortune (2024)",
+       y = "Fréquence",
+       x="Chiffre d'affaires (en milliards de $)")+
+  theme_minimal()+
+  scale_x_continuous(trans='log10', labels = scales::label_comma())
+```
+
+## Une variable qualitative
+
+On commence à compter
+
+```{r}
+
+table(df1$Sector)
+
+```
+
+Un diagramme en barre
+
+```{r}
+
+ggplot(df1, aes(x=Sector, group= Year))+
+  geom_bar(alpha=.5, fill="pink2")+
+             coord_flip()+
+  theme_minimal()
+
+```
+en mieux
+
+```{r}
+foo<-df1 %>%
+  group_by(Sector)|>
+  summarize(n=n())
+
+ggplot(foo, aes(x=reorder(Sector,n), y=n))+
+  geom_bar(stat="identity",alpha=.5, fill="pink2")+
+             coord_flip()+
+  theme_minimal()
+
+```
+
+# Corrélation de deux variables quantitatives
+
+La capitalisation est l'actualisation du profit. On s'attend à ce que les deux variables soient fortement corrélées. 
+
+```{r}
+foo <- df1 |>
+  filter(!is.na(Profits_M) & !is.na(MarketCap_March))
+r <-cor(foo$Profits_M,foo$MarketCap_March)
+r
+```
+
+```{r}
+
+ggplot(foo, aes(y=log10(Profits_M), x= log10(MarketCap_March), group= Year))+
+  geom_point(alpha=.5, size=1)+
+  geom_smooth(method="lm")
+
+```
+
+# Comparaison plusieurs groupes sur une variable quanti
+
+Comparer 2023 et 2024.
+
+```{r}
+ggplot(df, aes(x=MarketCap_March, group=Year ))+
+  geom_density(aes(color=Year))+
+  scale_x_log10()
+```
+
+test en t (student)
+
+```{r}
+stat.test <- df %>% 
+  t_test(MarketCap_March ~ Year) %>%
+  add_significance()
+stat.test
+
+```
+
+# Analyser deux variables qualitative
+
+## Tableau croisé
+
+Le point de départ est l'analyse du tableau qui croise les deux variables
+
+```{r}
+library(flextable)
+Crosstabs<-table(df1$HeadquartersState, df1$Sector)
+#flextable(Crosstabs)
+# Calculate the chi-square statistic
+chi_square_test <- chisq.test(Crosstabs)
+
+# Print the results
+print(chi_square_test)
+```
+
+## Analyse des correspondances
+
+```{r}
+CT<-Crosstabs
+ca=CA(CT, graph=FALSE)
+
+fviz_ca_biplot(ca, col.row="cos2", labelsize = 2) +
+       theme_minimal()
+
+ggsave("image/ca.jpg", width = 27, height = 18, units = "cm")
+
+```
+
+# Analyse mutivariée descriptive
+
+## ACP
+
+## Clustering
+
+grouper les Etats en famille similaire par leur profil d'entreprise
+
+
+# Eléments d'économétrie
+
+## régression multiple
+
+le modèle s'écrit[^1] de la manière suivante : 
+
+
+
+$$
+y_i=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j} + \epsilon_i
+$$
+
+[^1]:Pour écrire des équations en R markdown [voir](<https://rpruim.github.io/s341/S19/from-class/MathinRmd.html>)
+
+## modèles à décomposition d'erreurs
+
+C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchique. 
+
+$$
+y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
+$$
+## premier exemple simple
+
+```{r}
+library(tidyverse)
+df2$Marketcap<-log(df2$MarketCap_March)
+
+df2<-df2 |> 
+  mutate(profit=ifelse(Profits_M<0, -log(Profits_M), log(Profits_M)))
+      
+
+fit1<-lm(Marketcap ~ profit+ Assets_M, df2)
+fit2<-lm(Marketcap ~ profit+ Assets_M+RevenuePercentChange, df2)
+
+library(jtools)
+
+export_summs(fit1, fit2)
+
+plot_summs(fit1, fit2)
+
+effect_plot(fit2, pred = profit, interval = TRUE, plot.points = TRUE)
+
+```
+
+
+## Autres modèles
+
+-   sur variable binaire : modèle logit
+-   sur variable de dénombrement : modèle de poisson
+-   sur variable de durée : modèle de Cox
+
+{{< pagebreak >}}
+
+# Références

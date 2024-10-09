@@ -1,0 +1,110 @@
+---
+title: "Inclusion"
+author: "Sarah"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+execute:
+  echo: true
+  message: false
+  warning: False
+editor: visual
+---
+
+# Lire les données
+
+
+```{r}
+library(tidyverse)
+library(psych)
+library(lavaan)
+library(lavaanExtra)
+
+library(haven)
+df <- read_sav("Data inclusion.sav")
+
+```
+
+# Analyse factorielle
+
+```{r}
+
+library(psych)
+
+df_fac <- df %>% select(6:11)
+model = fa(df_fac, 2, rotate="oblimin")
+model
+
+scores<-model$scores
+
+```
+
+# test genre
+
+```{r}
+foo<-cbind(df[,1:5], scores) %>%
+  mutate(Sexe=ifelse(Sexe==1,"Male", "Female"),
+         ManSex=ifelse(ManSex==1,"Male Manager", "Female Manager"))%>%
+  rename(Satisfaction=MR1,
+         Motivation=MR2)
+  
+
+table(foo$Sexe)
+table(foo$ManSex)
+table(foo$Sexe, df$ManSex)
+
+fit<-lm(Motivation~Sexe+Sexe:ManSex, foo)
+summary(fit)
+
+foo1<-foo |>
+  group_by(Sexe,ManSex )%>%
+  summarise(n=n(),
+            Sat=mean(Satisfaction, na.rm=TRUE),
+            se_sat=sd(Satisfaction, na.rm=TRUE)/sqrt(n),
+            Mot=mean(Motivation, na.rm=TRUE),
+            se_mot=sd(Motivation, na.rm=TRUE)/sqrt(n)
+            )
+
+ggplot(foo1, aes(x=Sexe, y=Mot, group=ManSex))+
+  geom_line(aes(color=ManSex))+
+  geom_errorbar(aes(ymin=Mot-se_mot,ymax=Mot+se_mot, color=ManSex), width=.2)
+```
+# Lavaan
+
+modèle factoriel
+
+
+https://stats.oarc.ucla.edu/r/seminars/rcfa/
+
+
+
+```{r}
+
+foo <- na.omit(df_fac)
+
+HS.model <- ' Satisfaction  =~ SatisfW1 + SatisfW2 + SatisfW3 
+              Motivation =~ MotivW1 + MotivW2 + MotivW3
+              Satisfaction ~~ Motivation'
+
+fit <- cfa(HS.model, data = foo, std.lv=TRUE)
+summary(fit)
+
+standardizedSolution(fit)
+library(lavaanPlot)
+
+#lavaanPlot(model = fit, edge_options = list(color = "grey"), 
+#           coefs = TRUE, covs = TRUE,
+#           graph_options = list(rankdir = "LR"),
+#           node_options = list(shape = "box", fontname = "Helvetica",
+#                                            width = 2,
+#                                            height = .5))
+#nice_lavaanPlot(fit)
+library(semPlot)
+
+semPaths(fit, "par", weighted = FALSE, nCharNodes = 10, shapeMan = "rectangle",
+         sizeMan = 10, sizeMan2 = 5)
+```
+https://methodenlehre.github.io/SGSCLM-R-course/cfa-and-sem-with-lavaan.html
+
