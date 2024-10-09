@@ -2,14 +2,14 @@
 title: "Fortune 1000"
 authors:
   - name: Christophe Benavent
-    department: Department of Computer Science
+    department: DRM
     email: Christophe.benavent@dauphine.psl.eu
     affiliation: Université Dauphine - PSL
 abstract: | 
   Ce papier introduit à l'utilisation de r dans l'environnement quarto pour les analyses statistiques fondamentales de la recherche en gestion. Il sert aussi de modèle (template) pour les travaux des étudiants.
   On examine des distributions, on calcule des moyennes, on les compare et on les teste, on calcule des corrélations. On explore quelques techniques d'analyses de données à la française et on conclue sur un peu d'économétrie
 execute:
-  echo: true
+  echo: false
   message: false
   warning: false
   code-fold: true
@@ -56,11 +56,24 @@ df1 <- read_csv("fortune1000_2024.csv")|>
   rename(MarketCap_March=MarketCap_March28_M,
          Best_Companies=Best_Companies_to_Work_For)
 
-df2 <- read_csv("fortune1000_2023.csv")|>
+df_2024 <- read_csv("fortune1000_2023.csv")|>
   mutate(Year="2023")%>%
   rename(MarketCap_March=MarketCap_March31_M)
 
-df<- rbind(df1,df2)
+df_tot<- rbind(df1,df_2024) #le fichier superpose l'ensemble des observations
+
+```
+
+Pour garder les mêmes entreprises, et avoir leur données 2024 et 2023, on réalise une jointure à gauche (les données de 2024 sont mises à jour avec les données 2023)
+
+```{r}
+
+#ici on met à jour les données de 2024 avec celles de 2023
+df_2024 <- df1 %>%
+  left_join(df_2024, 
+            by = "Company",
+            suffix = c(".23", ".24"))
+head(df_2024)
 
 ```
 
@@ -69,7 +82,7 @@ df<- rbind(df1,df2)
 
 ## Une variable quantitative
 
-On étudie la capitalisation des entreprises en 2024. Exeminons les statistiques essentielles : les centralités et les dispersions.
+On étudie la capitalisation des entreprises en 2024. Examinons les statistiques essentielles : les centralités et les dispersions.
 
 ```{r}
 mean<-round(mean(df1$MarketCap_March, na.rm=TRUE)/1000,1)
@@ -94,7 +107,6 @@ ggplot(df1, aes(x=MarketCap_March ))+
  
 Avec quelques améliorations on obtient ceci:
 
- 
 ```{r}
 ggplot(df1, aes(x=MarketCap_March/1000 ))+ #les données sont en millions , on les transforment en milliards
   geom_histogram(fill="pink2", alpha=.5)+
@@ -163,15 +175,16 @@ ggplot(foo, aes(y=log10(Profits_M), x= log10(MarketCap_March), group= Year))+
 Comparer 2023 et 2024.
 
 ```{r}
-ggplot(df, aes(x=MarketCap_March, group=Year ))+
+ggplot(df_tot, aes(x=MarketCap_March, group=Year ))+
   geom_density(aes(color=Year))+
   scale_x_log10()
+
 ```
 
 test en t (student)
 
 ```{r}
-stat.test <- df %>% 
+stat.test <- df_tot %>% 
   t_test(MarketCap_March ~ Year) %>%
   add_significance()
 stat.test
@@ -219,15 +232,18 @@ grouper les Etats en famille similaire par leur profil d'entreprise
 
 # Eléments d'économétrie
 
+
+
 ## régression multiple
 
-le modèle s'écrit[^1] de la manière suivante : 
-
+le modèle formellement s'écrit[^1] de la manière suivante : 
 
 
 $$
 y_i=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j} + \epsilon_i
 $$
+où $$y_i$$ représente la valeur de l'individu $$i$$ pour la variable que l'on cherche à expliquer $$y$$. Les $$x_{ij}$$ représentent les valeurs de la variable $$j$$ pour l'individu $$i$$ . Les paramètres $$\beta_j$$ sont les valeurs que l'on cherche à estimer, en minimisant la comme du carrée des erreurs. ( principe des moindres carrés)
+
 
 [^1]:Pour écrire des équations en R markdown [voir](<https://rpruim.github.io/s341/S19/from-class/MathinRmd.html>)
 
@@ -238,27 +254,70 @@ C'est le cas des panels par exemple: chaque individu observé sur la variable $j
 $$
 y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
 $$
-## premier exemple simple
+## modèle logistique
+
+
+## Premier exemple simple
+
+On s'intéresse à la capitalisation sur le marché en 2024. Il y a de bonnes raisons qu'elle soit liée à celle de l'année précédentes. Examinons la relation. 
 
 ```{r}
-library(tidyverse)
-df2$Marketcap<-log(df2$MarketCap_March)
+df_2024<-df_2024%>%
+  filter(!is.na(MarketCap_Updated_M.23), !is.na(MarketCap_Updated_M.24))
 
-df2<-df2 |> 
-  mutate(profit=ifelse(Profits_M<0, -log(Profits_M), log(Profits_M)))
-      
+r<-round(cor(df_2024$MarketCap_Updated_M.23,df_2024$MarketCap_Updated_M.24),3)
 
-fit1<-lm(Marketcap ~ profit+ Assets_M, df2)
-fit2<-lm(Marketcap ~ profit+ Assets_M+RevenuePercentChange, df2)
+ggplot(df_2024, aes(x=MarketCap_Updated_M.23,MarketCap_Updated_M.24))+
+  geom_point(alpha=.5, size=.8)+
+  geom_smooth(method="lm", size=.5)+
+  labs(title = paste0("corrélation : ", r))
+
+```
+Si la corrélation est forte, il y a cependant un phénomène d' hétéroscédasticité : la variance n'est pas constante. On peut corriger ceci en transformant nos variables par une fonction logarithme. Le résultat est bien plus régulier !
+
+```{r}
+df_2024<-df_2024%>%
+  filter(!is.na(MarketCap_Updated_M.23), !is.na(MarketCap_Updated_M.24)) |>
+  mutate(MarketCap_Updated_M.23_ln=log(MarketCap_Updated_M.23),
+         MarketCap_Updated_M.24_ln=log(MarketCap_Updated_M.24))
+
+r<-round(cor(df_2024$MarketCap_Updated_M.23_ln,df_2024$MarketCap_Updated_M.24_ln),3)
+
+ggplot(df_2024, aes(x=MarketCap_Updated_M.23_ln,MarketCap_Updated_M.24_ln))+
+  geom_point(alpha=.5, size=.8)+
+  geom_smooth(method="lm", size=.5)+
+  labs(title = paste0("corrélation : ", r))
+
+```
+Effectuons la régression. 
+
+
+```{r}
+fit<-lm( MarketCap_Updated_M.24_ln ~ MarketCap_Updated_M.23_ln, df_2024)
+summary(fit)
+```
+Il est temps d'introduire d'autre variables.
+
+
+
+```{r}
+
+
+fit1<-lm( MarketCap_Updated_M.24_ln ~ MarketCap_Updated_M.23_ln+  RevenuePercentChange.24 , df_2024)
+fit2<-lm( MarketCap_Updated_M.24_ln ~ MarketCap_Updated_M.23_ln+  RevenuePercentChange.24 + Sector.24, df_2024)
 
 library(jtools)
 
-export_summs(fit1, fit2)
+export_summs(fit, fit1,fit2,
+             error_pos="right",
+              number_format = "%.3f")
 
-plot_summs(fit1, fit2)
+plot_summs(fit,fit1, fit2)
 
-effect_plot(fit2, pred = profit, interval = TRUE, plot.points = TRUE)
+effect_plot(fit2, pred = Sector.24, interval = TRUE, plot.points = FALSE)+coord_flip()
 
+effect_plot(fit2, pred = RevenuePercentChange.24, interval = TRUE, plot.points = FALSE)+
+  scale_x_log10()
 ```
 
 
