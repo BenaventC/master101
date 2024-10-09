@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="keywords" content="r stat, ggplot, tests, regression, clustering">
+<meta name="keywords" content="r stat, ggplot, tests, anova, regression, clustering, fortune">
 
 <title>Fortune 1000</title>
 <style>
@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   width: 0.8em;
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 /* CSS for citations */
 div.csl-bib-body { }
@@ -54,6 +88,10 @@ div.csl-indent {
 <script src="script00_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="script00_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="script00_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<link href="script00_files/libs/tabwid-1.1.3/tabwid.css" rel="stylesheet">
+
+<script src="script00_files/libs/tabwid-1.1.3/tabwid.js"></script>
+
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -130,7 +168,7 @@ window.Quarto = {
 <div>
   <div class="keywords">
     <div class="block-title">Keywords</div>
-    <p>r stat, ggplot, tests, regression, clustering</p>
+    <p>r stat, ggplot, tests, anova, regression, clustering, fortune</p>
   </div>
 </div>
 
@@ -140,33 +178,61 @@ window.Quarto = {
 <div style="page-break-after: always;"></div>
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
-<p>Il nous faut des outils et des données.</p>
+<p>Le cas que nous allons traité est celui des classements Fortune 1000 pour 2024 et 2023. On va se donner un but d’étude : examiner quels facteurs affectent la capitalisation boursière de ces 1000 entreprises.</p>
+<p>Il nous faut des outils, les packages, et des données que l’on va mettre en forme.</p>
 <section id="les-packages" class="level2">
 <h2 class="anchored" data-anchor-id="les-packages">Les packages</h2>
-<p>Notre boite à outils essentielle est <code>tidyverse</code>, de <span class="citation" data-cites="wickham_welcome_2019">Wickham et al. (<a href="#ref-wickham_welcome_2019" role="doc-biblioref">2019</a>)</span>. On en découvrira l’<a href="https://www.tidyverse.org/packages/">univers ici</a></p>
+<p>La boite à outils essentielle est <code>tidyverse</code>, de <span class="citation" data-cites="wickham_welcome_2019">Wickham et al. (<a href="#ref-wickham_welcome_2019" role="doc-biblioref">2019</a>)</span>. On en découvrira l’<a href="https://www.tidyverse.org/packages/">univers ici</a>, elle nous permettra de manipuler les tableaux de données, et de produire des graphes élégant. Elle s’appuie sur une grammaire des données et une grammaire des graphiques.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse) <span class="co">#outil de base(dplyr+ggplot+...)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(rstatix) <span class="co"># pour tout les test en tidy...</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(FactoMineR) <span class="co">#ACP AFC et clustering</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(factoextra)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(flextable) <span class="co">#pour faire de jolis tableaux</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(scales) <span class="co">#un accessoire de ggplot</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(jtools) <span class="co"># pour de meilleures présentations des résultats des modèles de régressions</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggrepel) <span class="co"># un complément de ggplot utile </span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 <section id="lecture-du-fichier" class="level2">
 <h2 class="anchored" data-anchor-id="lecture-du-fichier">Lecture du fichier</h2>
-<p>Voici la <a href="https://www.kaggle.com/datasets/jeannicolasduval/2024-fortune-1000-companies">source des données</a> du Fortune 1000 de 2024 et celle de <a href="https://www.kaggle.com/datasets/jeannicolasduval/2023-fortune-1000-companies-info">2023</a> . On charge les fichiers et on les compile en un seul <code>dataframe</code></p>
-<p>Pour garder les mêmes entreprises, et avoir leur données 2024 et 2023, on réalise une jointure à gauche (les données de 2024 sont mises à jour avec les données 2023)</p>
+<p>Voici la <a href="https://www.kaggle.com/datasets/jeannicolasduval/2024-fortune-1000-companies">source des données</a> du Fortune 1000 de 2024 et celles de <a href="https://www.kaggle.com/datasets/jeannicolasduval/2023-fortune-1000-companies-info">2023</a> . On charge les fichiers et on les compile en un seul <code>dataframe</code>, le format ordinaire des données que l’on manipule en <code>r</code>. On en profite pour introduire quelques manipulations de données avec <a href="https://dplyr.tidyverse.org/"><code>dplyr</code></a>, un des packages clé de la suite <code>tidyverse</code>.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 63
-  Rank.23 Company            Ticker.23 Sector.23   Industry.23     Profitable.23
-    &lt;dbl&gt; &lt;chr&gt;              &lt;chr&gt;     &lt;chr&gt;       &lt;chr&gt;           &lt;chr&gt;        
-1       1 Walmart            WMT       Retailing   General Mercha… yes          
-2       2 Amazon             AMZN      Retailing   Internet Servi… yes          
-3       3 Apple              AAPL      Technology  Computers, Off… yes          
-4       4 UnitedHealth Group UNH       Health Care Health Care: I… yes          
-5       5 Berkshire Hathaway BRKA      Financials  Insurance: Pro… yes          
-6       6 CVS Health         CVS       Health Care Health Care: P… yes          
-# ℹ 57 more variables: Founder_is_CEO.23 &lt;chr&gt;, FemaleCEO.23 &lt;chr&gt;,
-#   Growth_in_Jobs.23 &lt;chr&gt;, Change_in_Rank.23 &lt;dbl&gt;, Gained_in_Rank.23 &lt;chr&gt;,
-#   Dropped_in_Rank.23 &lt;chr&gt;, Newcomer_to_the_Fortune500.23 &lt;chr&gt;,
-#   Global500.23 &lt;chr&gt;, Best_Companies.23 &lt;chr&gt;, Number_of_employees.23 &lt;dbl&gt;,
-#   MarketCap_March.23 &lt;dbl&gt;, Revenues_M.23 &lt;dbl&gt;,
-#   RevenuePercentChange.23 &lt;dbl&gt;, Profits_M.23 &lt;dbl&gt;,
-#   ProfitsPercentChange.23 &lt;dbl&gt;, Assets_M.23 &lt;dbl&gt;, CEO.23 &lt;chr&gt;, …</code></pre>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df1 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"fortune1000_2024.csv"</span>)<span class="sc">|&gt;</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Year=</span><span class="st">"2024"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Worlds_Most_Admired_Companies)<span class="sc">%&gt;%</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">MarketCap_March=</span>MarketCap_March28_M,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">Best_Companies=</span>Best_Companies_to_Work_For)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>df2 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"fortune1000_2023.csv"</span>)<span class="sc">|&gt;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Year=</span><span class="st">"2023"</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">MarketCap_March=</span>MarketCap_March31_M)</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>df_tot<span class="ot">&lt;-</span> <span class="fu">rbind</span>(df1,df2) <span class="co">#le fichier superpose l'ensemble des observations</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Une autre stratégie pourrait être de s’intéresser aux entreprises du classement 2024, mais en les enrichissant des données de 2023 ( si elle étaient déjà dans le classements. On réalise une jointure à gauche (les données de 2024 sont mises à jour avec les données 2023). On utilise <code>dplyr</code>pour effectuer l’opération. Pour les jointures on consultera <a href="https://perso.ens-lyon.fr/lise.vaudor/combinaisons-et-jointures-de-tables-avec-dplyr/">ce document</a>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#ici on met à jour les données de 2024 avec celles de 2023</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>df_2024 <span class="ot">&lt;-</span> df1 <span class="sc">%&gt;%</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">left_join</span>(df2, </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">by =</span> <span class="st">"Company"</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">".23"</span>, <span class="st">".24"</span>))</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>foo<span class="ot">&lt;-</span>df_2024<span class="sc">%&gt;%</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Rank<span class="fl">.24</span>,Company, Rank<span class="fl">.23</span>,MarketCap_Updated_M<span class="fl">.24</span>, Number_of_employees<span class="fl">.24</span>, Revenues_M<span class="fl">.24</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Rank<span class="fl">.24</span><span class="sc">&lt;</span><span class="dv">21</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(Rank<span class="fl">.24</span>)<span class="sc">%&gt;%</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">cap_per_employee=</span>MarketCap_Updated_M<span class="fl">.24</span><span class="sc">/</span>Number_of_employees<span class="fl">.24</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="co">#ici on utilise flextable pour faire de jolis tableaux</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>ft <span class="ot">&lt;-</span> <span class="fu">flextable</span>(foo)</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>ft <span class="ot">&lt;-</span> <span class="fu">theme_vanilla</span>(ft)</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>ft <span class="ot">&lt;-</span> <span class="fu">add_footer_lines</span>(ft, <span class="st">""</span>)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>ft <span class="ot">&lt;-</span> <span class="fu">color</span>(ft, <span class="at">part =</span> <span class="st">"footer"</span>, <span class="at">color =</span> <span class="st">"#666666"</span>)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>ft <span class="ot">&lt;-</span> <span class="fu">set_caption</span>(ft, <span class="at">caption =</span> <span class="st">"Les 20 premiers du Fortune1000 2024"</span>)</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>ft</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="tabwid"><style>.cl-ebf66a2a{}.cl-ebe05d02{font-family:'Arial';font-size:11pt;font-weight:bold;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-ebe05d20{font-family:'Arial';font-size:11pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-ebe05d2a{font-family:'Arial';font-size:11pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(102, 102, 102, 1.00);background-color:transparent;}.cl-ebe9453e{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ebe94552{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ebe96a96{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 1.5pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96aa0{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 1.5pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96aaa{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0.75pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96aab{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0.75pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96ab4{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0.75pt solid rgba(102, 102, 102, 1.00);border-top: 0.75pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96abe{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0.75pt solid rgba(102, 102, 102, 1.00);border-top: 0.75pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96abf{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 0.75pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96ac8{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 0.75pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ebe96ad2{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(255, 255, 255, 0.00);border-top: 0 solid rgba(255, 255, 255, 0.00);border-left: 0 solid rgba(255, 255, 255, 0.00);border-right: 0 solid rgba(255, 255, 255, 0.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table data-quarto-disable-processing="true" class="cl-ebf66a2a"><thead><tr style="overflow-wrap:break-word;"><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">Rank.24</span></p></th><th class="cl-ebe96aa0"><p class="cl-ebe94552"><span class="cl-ebe05d02">Company</span></p></th><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">Rank.23</span></p></th><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">MarketCap_Updated_M.24</span></p></th><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">Number_of_employees.24</span></p></th><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">Revenues_M.24</span></p></th><th class="cl-ebe96a96"><p class="cl-ebe9453e"><span class="cl-ebe05d02">cap_per_employee</span></p></th></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1</span></p></td><td class="cl-ebe96aab"><p class="cl-ebe94552"><span class="cl-ebe05d20">Walmart</span></p></td><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1</span></p></td><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">416,986</span></p></td><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">2,100,000</span></p></td><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">611,289</span></p></td><td class="cl-ebe96aaa"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.1985648</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">2</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Amazon</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">2</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1,370,373</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1,541,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">513,983</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.8892751</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">3</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Exxon Mobil</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">7</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">409,878</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">62,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">413,680</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">6.6109355</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">4</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Apple</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">3</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">3,051,211</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">164,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">394,328</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">18.6049451</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">5</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">UnitedHealth Group</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">4</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">450,694</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">400,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">324,162</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1.1267350</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">6</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">CVS Health</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">6</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">91,242</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">259,500</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">322,467</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.3516069</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">7</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Berkshire Hathaway</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">5</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">752,829</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">383,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">302,089</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1.9656110</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">8</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Alphabet</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">8</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1,585,270</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">190,234</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">282,836</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">8.3332632</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">9</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">McKesson</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">9</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">55,787</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">66,500</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">263,966</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.8389023</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">10</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Chevron</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">15</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">290,714</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">43,846</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">246,252</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">6.6303426</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">12</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Costco Wholesale</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">11</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">245,043</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">304,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">226,954</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.8060625</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">13</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Microsoft</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">13</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">2,570,671</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">221,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">198,270</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">11.6319955</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">14</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Cardinal Health</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">14</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">23,797</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">46,035</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">181,364</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.5169328</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">15</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Cigna</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">16</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">83,187</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">70,231</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">180,516</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">1.1844769</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">16</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Marathon Petroleum</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">24</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">50,121</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">17,800</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">180,012</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">2.8157865</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">17</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Phillips 66</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">26</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">45,649</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">13,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">175,702</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">3.5114615</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">18</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Valero Energy</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">29</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">41,108</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">9,743</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">171,189</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">4.2192343</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">19</span></p></td><td class="cl-ebe96abe"><p class="cl-ebe94552"><span class="cl-ebe05d20">Ford Motor</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">17</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">56,371</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">173,000</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">158,057</span></p></td><td class="cl-ebe96ab4"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.3258439</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">20</span></p></td><td class="cl-ebe96ac8"><p class="cl-ebe94552"><span class="cl-ebe05d20">Home Depot</span></p></td><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">23</span></p></td><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">317,749</span></p></td><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">471,600</span></p></td><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">157,403</span></p></td><td class="cl-ebe96abf"><p class="cl-ebe9453e"><span class="cl-ebe05d20">0.6737680</span></p></td></tr></tbody><tfoot><tr style="overflow-wrap:break-word;"><td colspan="7" class="cl-ebe96ad2"><p class="cl-ebe94552"><span class="cl-ebe05d2a"></span></p></td></tr></tfoot></table></div>
 </div>
 </div>
 </section>
@@ -176,6 +242,10 @@ window.Quarto = {
 <section id="une-variable-quantitative" class="level2">
 <h2 class="anchored" data-anchor-id="une-variable-quantitative">Une variable quantitative</h2>
 <p>On étudie la capitalisation des entreprises en 2024. Examinons les statistiques essentielles : les centralités et les dispersions.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>mean<span class="ot">&lt;-</span><span class="fu">round</span>(<span class="fu">mean</span>(df1<span class="sc">$</span>MarketCap_March, <span class="at">na.rm=</span><span class="cn">TRUE</span>)<span class="sc">/</span><span class="dv">1000</span>,<span class="dv">1</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>median<span class="ot">&lt;-</span><span class="fu">round</span>(<span class="fu">median</span>(df1<span class="sc">$</span>MarketCap_March, <span class="at">na.rm=</span><span class="cn">TRUE</span>)<span class="sc">/</span><span class="dv">1000</span>,<span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 <p>On obtient donc :</p>
 <ul>
 <li>capitalisation moyenne : 50.8 milliards de $</li>
@@ -184,6 +254,8 @@ window.Quarto = {
 </ul>
 <p>La distribution peut être représentée par un simple histogramme.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df1, <span class="fu">aes</span>(<span class="at">x=</span>MarketCap_March ))<span class="sc">+</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -194,6 +266,13 @@ window.Quarto = {
 </div>
 <p>Avec quelques améliorations on obtient ceci:</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df1, <span class="fu">aes</span>(<span class="at">x=</span>MarketCap_March<span class="sc">/</span><span class="dv">1000</span> ))<span class="sc">+</span> <span class="co">#les données sont en millions , on les transforme en milliards de$</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">fill=</span><span class="st">"pink2"</span>, <span class="at">alpha=</span>.<span class="dv">5</span>)<span class="sc">+</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="st">"Distribution du chiffre d'affaires des 1000 de Fortune (2024)"</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Fréquence"</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">x=</span><span class="st">"Chiffre d'affaires (en milliards de $)"</span>)<span class="sc">+</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()<span class="sc">+</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">trans=</span><span class="st">'log10'</span>, <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">label_comma</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -203,38 +282,27 @@ window.Quarto = {
 </div>
 </div>
 </section>
-<section id="une-variable-qualitative" class="level2">
-<h2 class="anchored" data-anchor-id="une-variable-qualitative">Une variable qualitative</h2>
-<p>On commence à compter</p>
+<section id="analyser-la-distribution-dune-variable-qualitative" class="level2">
+<h2 class="anchored" data-anchor-id="analyser-la-distribution-dune-variable-qualitative">Analyser la distribution d’une variable qualitative</h2>
+<p>On commence à compter le nombre d’occurrences par modalité. On analyse la variable secteur, on veut connaitre la fréquences des 1000 parmi les secteurs d’activités.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>
-          Aerospace &amp; Defense                       Apparel 
-                           19                            15 
-            Business Services                     Chemicals 
-                           59                            26 
-                       Energy    Engineering &amp; Construction 
-                          107                            31 
-                   Financials            Food &amp; Drug Stores 
-                          163                             9 
-    Food, Beverages &amp; Tobacco                   Health Care 
-                           35                            80 
-Hotels, Restaurants &amp; Leisure            Household Products 
-                           29                            20 
-                  Industrials                     Materials 
-                           48                            47 
-                        Media        Motor Vehicles &amp; Parts 
-                           26                            21 
-                    Retailing                    Technology 
-                           72                           115 
-           Telecommunications                Transportation 
-                            9                            39 
-                  Wholesalers 
-                           30 </code></pre>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>sector<span class="ot">&lt;-</span> <span class="fu">table</span>(df1<span class="sc">$</span>Sector) <span class="sc">|&gt;</span> <span class="co">#c'est une fonction de base de r</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">|&gt;</span> <span class="co"># le résultat de table est un vecteur, un data frame est un format plus utile</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(Freq))</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>ft<span class="ot">&lt;-</span><span class="fu">flextable</span>(sector)</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>ft</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="tabwid"><style>.cl-ecd209e0{}.cl-ecc06708{font-family:'Arial';font-size:11pt;font-weight:normal;font-style:normal;text-decoration:none;color:rgba(0, 0, 0, 1.00);background-color:transparent;}.cl-ecc5e0fc{margin:0;text-align:left;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ecc5e110{margin:0;text-align:right;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);padding-bottom:5pt;padding-top:5pt;padding-left:5pt;padding-right:5pt;line-height: 1;background-color:transparent;}.cl-ecc60640{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 1.5pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ecc6064a{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 1.5pt solid rgba(102, 102, 102, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ecc60654{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ecc60655{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 0 solid rgba(0, 0, 0, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ecc6065e{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}.cl-ecc60668{width:0.75in;background-color:transparent;vertical-align: middle;border-bottom: 1.5pt solid rgba(102, 102, 102, 1.00);border-top: 0 solid rgba(0, 0, 0, 1.00);border-left: 0 solid rgba(0, 0, 0, 1.00);border-right: 0 solid rgba(0, 0, 0, 1.00);margin-bottom:0;margin-top:0;margin-left:0;margin-right:0;}</style><table data-quarto-disable-processing="true" class="cl-ecd209e0"><thead><tr style="overflow-wrap:break-word;"><th class="cl-ecc60640"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Var1</span></p></th><th class="cl-ecc6064a"><p class="cl-ecc5e110"><span class="cl-ecc06708">Freq</span></p></th></tr></thead><tbody><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Financials</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">163</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Technology</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">115</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Energy</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">107</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Health Care</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">80</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Retailing</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">72</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Business Services</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">59</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Industrials</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">48</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Materials</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">47</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Transportation</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">39</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Food, Beverages &amp; Tobacco</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">35</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Engineering &amp; Construction</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">31</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Wholesalers</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">30</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Hotels, Restaurants &amp; Leisure</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">29</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Chemicals</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">26</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Media</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">26</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Motor Vehicles &amp; Parts</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">21</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Household Products</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">20</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Aerospace &amp; Defense</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">19</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Apparel</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">15</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc60654"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Food &amp; Drug Stores</span></p></td><td class="cl-ecc60655"><p class="cl-ecc5e110"><span class="cl-ecc06708">9</span></p></td></tr><tr style="overflow-wrap:break-word;"><td class="cl-ecc6065e"><p class="cl-ecc5e0fc"><span class="cl-ecc06708">Telecommunications</span></p></td><td class="cl-ecc60668"><p class="cl-ecc5e110"><span class="cl-ecc06708">9</span></p></td></tr></tbody></table></div>
 </div>
 </div>
 <p>Un diagramme en barre</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df1, <span class="fu">aes</span>(<span class="at">x=</span>Sector, <span class="at">group=</span> Year))<span class="sc">+</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">alpha=</span>.<span class="dv">5</span>, <span class="at">fill=</span><span class="st">"pink2"</span>)<span class="sc">+</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>             <span class="fu">coord_flip</span>()<span class="sc">+</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -245,6 +313,14 @@ Hotels, Restaurants &amp; Leisure            Household Products
 </div>
 <p>en mieux</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>foo<span class="ot">&lt;-</span>df1 <span class="sc">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Sector)<span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">n=</span><span class="fu">n</span>())</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(foo, <span class="fu">aes</span>(<span class="at">x=</span><span class="fu">reorder</span>(Sector,n), <span class="at">y=</span>n))<span class="sc">+</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat=</span><span class="st">"identity"</span>,<span class="at">alpha=</span>.<span class="dv">5</span>, <span class="at">fill=</span><span class="st">"pink2"</span>)<span class="sc">+</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>             <span class="fu">coord_flip</span>()<span class="sc">+</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -255,19 +331,60 @@ Hotels, Restaurants &amp; Leisure            Household Products
 </div>
 </section>
 </section>
+<section id="comparons-les-moyennes" class="level1">
+<h1>Comparons les moyennes</h1>
+<p>On va comparer les capitalisations médianes par secteur et par année.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>foo<span class="ot">&lt;-</span> df_tot <span class="sc">|&gt;</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(Sector, Year)<span class="sc">%&gt;%</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">n=</span><span class="fu">n</span>(),</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">median=</span><span class="fu">median</span>(MarketCap_Updated_M, <span class="at">na.rm=</span><span class="cn">TRUE</span>) )</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(foo, <span class="fu">aes</span>(<span class="at">x=</span><span class="fu">reorder</span>(Sector,median), <span class="at">y=</span>median, <span class="at">group=</span>Year))<span class="sc">+</span><span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">color=</span>Year))<span class="sc">+</span> <span class="fu">coord_flip</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="script00_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Un test d’analyse de variance serait bienvenu. Ses résultats sont clairs : si on peut rejeter avec certitude l’hypothèse de moyennes égales entre tous les secteurs, et donc accepter que certains ont des moyenne plus fortes ou plus plaibles que les autres, et qu’il y a donc un effet sectoriel, la différence d’une année à l’autre n’est pas significative. Une p-value de .1724 indique un risque élevé que la réalité soit une absence de différence, c’est une hypothèse qu’on ne peut écarter.En moyenne les capitalisations n’ont pas changé.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>fit<span class="ot">&lt;-</span><span class="fu">lm</span>(MarketCap_Updated_M<span class="sc">~</span>Sector<span class="sc">+</span>Year, df_tot)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(fit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Analysis of Variance Table
+
+Response: MarketCap_Updated_M
+            Df     Sum Sq    Mean Sq F value    Pr(&gt;F)    
+Sector      20 2.9520e+12 1.4760e+11  3.8687 1.715e-08 ***
+Year         1 7.1101e+10 7.1101e+10  1.8636    0.1724    
+Residuals 1906 7.2717e+13 3.8151e+10                      
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+</div>
+</div>
+</section>
 <section id="corrélation-de-deux-variables-quantitatives" class="level1">
 <h1>Corrélation de deux variables quantitatives</h1>
 <p>La capitalisation est l’actualisation du profit. On s’attend à ce que les deux variables soient fortement corrélées.</p>
 <div class="cell">
-<div class="cell-output cell-output-stdout">
-<pre><code>[1] 0.8256856</code></pre>
-</div>
-</div>
-<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>foo <span class="ot">&lt;-</span> df_tot <span class="sc">|&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(Profits_M) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(MarketCap_March))</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span><span class="fu">round</span>(<span class="fu">cor</span>(foo<span class="sc">$</span>Profits_M,foo<span class="sc">$</span>MarketCap_March),<span class="dv">3</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(foo, <span class="fu">aes</span>(<span class="at">x=</span>Profits_M, <span class="at">y=</span> MarketCap_March))<span class="sc">+</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha=</span>.<span class="dv">5</span>, <span class="at">size=</span><span class="dv">1</span>)<span class="sc">+</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text_repel</span>(<span class="fu">aes</span>(<span class="at">label=</span>Company), <span class="at">size=</span><span class="dv">3</span>)<span class="sc">+</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method=</span><span class="st">"lm"</span>, <span class="at">color=</span><span class="st">"pink"</span>)<span class="sc">+</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method=</span><span class="st">"loess"</span>, <span class="at">color=</span><span class="st">"purple"</span>)<span class="sc">+</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title=</span><span class="fu">paste0</span>(<span class="st">"corrélation : "</span>, r))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -277,16 +394,23 @@ Hotels, Restaurants &amp; Leisure            Household Products
 <h1>Comparaison plusieurs groupes sur une variable quanti</h1>
 <p>Comparer 2023 et 2024.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df_tot, <span class="fu">aes</span>(<span class="at">x=</span>MarketCap_March, <span class="at">group=</span>Year ))<span class="sc">+</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="fu">aes</span>(<span class="at">color=</span>Year))<span class="sc">+</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_log10</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
 </div>
 <p>test en t (student)</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>stat.test <span class="ot">&lt;-</span> df_tot <span class="sc">%&gt;%</span> </span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t_test</span>(MarketCap_March <span class="sc">~</span> Year) <span class="sc">%&gt;%</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_significance</span>()</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>stat.test</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 1 × 9
   .y.             group1 group2    n1    n2 statistic    df     p p.signif
@@ -301,6 +425,14 @@ Hotels, Restaurants &amp; Leisure            Household Products
 <h2 class="anchored" data-anchor-id="tableau-croisé">Tableau croisé</h2>
 <p>Le point de départ est l’analyse du tableau qui croise les deux variables</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(flextable)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>Crosstabs<span class="ot">&lt;-</span><span class="fu">table</span>(df1<span class="sc">$</span>HeadquartersState, df1<span class="sc">$</span>Sector)</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="co">#flextable(Crosstabs)</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate the chi-square statistic</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>chi_square_test <span class="ot">&lt;-</span> <span class="fu">chisq.test</span>(Crosstabs)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Print the results</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(chi_square_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
     Pearson's Chi-squared test
@@ -313,13 +445,19 @@ X-squared = 1800.7, df = 920, p-value &lt; 2.2e-16</code></pre>
 <section id="analyse-des-correspondances" class="level2">
 <h2 class="anchored" data-anchor-id="analyse-des-correspondances">Analyse des correspondances</h2>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>CT<span class="ot">&lt;-</span>Crosstabs</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>ca<span class="ot">=</span><span class="fu">CA</span>(CT, <span class="at">graph=</span><span class="cn">FALSE</span>)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="fu">fviz_ca_biplot</span>(ca, <span class="at">col.row=</span><span class="st">"cos2"</span>, <span class="at">labelsize =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>       <span class="fu">theme_minimal</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-15-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"image/ca.jpg"</span>, <span class="at">width =</span> <span class="dv">27</span>, <span class="at">height =</span> <span class="dv">18</span>, <span class="at">units =</span> <span class="st">"cm"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 </section>
@@ -342,27 +480,19 @@ X-squared = 1800.7, df = 920, p-value &lt; 2.2e-16</code></pre>
 y_i=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j} + \epsilon_i
 \]</span> où <span class="math inline">\(y_i\)</span> représente la valeur de l’individu <span class="math inline">\(i\)</span> pour la variable que l’on cherche à expliquer <span class="math inline">\(y\)</span>. Les <span class="math inline">\(x_{ij}\)</span> représentent les valeurs de la variable <span class="math display">\[j\]</span> pour l’individu <span class="math display">\[i\]</span> . Les paramètres <span class="math display">\[\beta_j\]</span> sont les valeurs que l’on cherche à estimer, en minimisant la comme du carrée des erreurs. ( principe des moindres carrés)</p>
 </section>
-<section id="modèles-à-décomposition-derreurs" class="level2">
-<h2 class="anchored" data-anchor-id="modèles-à-décomposition-derreurs">modèles à décomposition d’erreurs</h2>
-<p>C’est le cas des panels par exemple: chaque individu observé sur la variable <span class="math inline">\(j\)</span> l’est dans le pays <span class="math inline">\(g\)</span> et au moment <span class="math inline">\(t\)</span> . On parle aussi de modèles hiérarchique.</p>
-<p><span class="math display">\[
-y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
-\]</span> ## modèle logistique</p>
-</section>
 <section id="premier-exemple-simple" class="level2">
 <h2 class="anchored" data-anchor-id="premier-exemple-simple">Premier exemple simple</h2>
 <p>On s’intéresse à la capitalisation sur le marché en 2024. Il y a de bonnes raisons qu’elle soit liée à celle de l’année précédentes. Examinons la relation.</p>
 <div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
-<p>Si la corrélation est forte, il y a cependant un phénomène d’ hétéroscédasticité : la variance n’est pas constante. On peut corriger ceci en transformant nos variables par une fonction logarithme. Le résultat est bien plus régulier !</p>
-<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>df_2024<span class="ot">&lt;-</span>df_2024<span class="sc">%&gt;%</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(MarketCap_Updated_M<span class="fl">.23</span>), <span class="sc">!</span><span class="fu">is.na</span>(MarketCap_Updated_M<span class="fl">.24</span>))</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>r<span class="ot">&lt;-</span><span class="fu">round</span>(<span class="fu">cor</span>(df_2024<span class="sc">$</span>MarketCap_Updated_M<span class="fl">.23</span>,df_2024<span class="sc">$</span>MarketCap_Updated_M<span class="fl">.24</span>),<span class="dv">3</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df_2024, <span class="fu">aes</span>(<span class="at">x=</span>MarketCap_Updated_M<span class="fl">.23</span>,MarketCap_Updated_M<span class="fl">.24</span>))<span class="sc">+</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha=</span>.<span class="dv">5</span>, <span class="at">size=</span>.<span class="dv">8</span>)<span class="sc">+</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method=</span><span class="st">"lm"</span>, <span class="at">size=</span>.<span class="dv">5</span>)<span class="sc">+</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">"corrélation : "</span>, r))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -371,8 +501,31 @@ y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
 </div>
 </div>
 </div>
+<p>Si la corrélation est forte, il y a cependant un phénomène d’ hétéroscédasticité : la variance n’est pas constante. On peut corriger ceci en transformant nos variables par une fonction logarithme. Le résultat est bien plus régulier !</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>df_2024<span class="ot">&lt;-</span>df_2024<span class="sc">%&gt;%</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(MarketCap_Updated_M<span class="fl">.23</span>), <span class="sc">!</span><span class="fu">is.na</span>(MarketCap_Updated_M<span class="fl">.24</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">MarketCap_Updated_M.23_ln=</span><span class="fu">log</span>(MarketCap_Updated_M<span class="fl">.23</span>),</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">MarketCap_Updated_M.24_ln=</span><span class="fu">log</span>(MarketCap_Updated_M<span class="fl">.24</span>))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>r<span class="ot">&lt;-</span><span class="fu">round</span>(<span class="fu">cor</span>(df_2024<span class="sc">$</span>MarketCap_Updated_M<span class="fl">.23</span>_ln,df_2024<span class="sc">$</span>MarketCap_Updated_M<span class="fl">.24</span>_ln),<span class="dv">3</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df_2024, <span class="fu">aes</span>(<span class="at">x=</span>MarketCap_Updated_M<span class="fl">.23</span>_ln,MarketCap_Updated_M<span class="fl">.24</span>_ln))<span class="sc">+</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha=</span>.<span class="dv">5</span>, <span class="at">size=</span>.<span class="dv">8</span>)<span class="sc">+</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method=</span><span class="st">"lm"</span>, <span class="at">size=</span>.<span class="dv">5</span>)<span class="sc">+</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="fu">paste0</span>(<span class="st">"corrélation : "</span>, r))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="script00_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
 <p>Effectuons la régression.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>fit<span class="ot">&lt;-</span><span class="fu">lm</span>( MarketCap_Updated_M<span class="fl">.24</span>_ln <span class="sc">~</span> MarketCap_Updated_M<span class="fl">.23</span>_ln, df_2024)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(fit)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
 Call:
@@ -397,8 +550,16 @@ F-statistic: 1.084e+04 on 1 and 888 DF,  p-value: &lt; 2.2e-16</code></pre>
 </div>
 <p>Il est temps d’introduire d’autre variables.</p>
 <div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>fit1<span class="ot">&lt;-</span><span class="fu">lm</span>( MarketCap_Updated_M<span class="fl">.24</span>_ln <span class="sc">~</span> MarketCap_Updated_M<span class="fl">.23</span>_ln<span class="sc">+</span>  RevenuePercentChange<span class="fl">.24</span> , df_2024)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>fit2<span class="ot">&lt;-</span><span class="fu">lm</span>( MarketCap_Updated_M<span class="fl">.24</span>_ln <span class="sc">~</span> MarketCap_Updated_M<span class="fl">.23</span>_ln<span class="sc">+</span>  RevenuePercentChange<span class="fl">.24</span> <span class="sc">+</span> Sector<span class="fl">.24</span>, df_2024)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(jtools)</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="fu">export_summs</span>(fit, fit1,fit2,</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">error_pos=</span><span class="st">"right"</span>,</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>              <span class="at">number_format =</span> <span class="st">"%.3f"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<table class="huxtable" data-quarto-disable-processing="true" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-19">
+<table class="huxtable" data-quarto-disable-processing="true" style="border-collapse: collapse; border: 0px; margin-bottom: 2em; margin-top: 2em; ; margin-left: auto; margin-right: auto;  " id="tab:unnamed-chunk-20">
 <colgroup><col><col><col><col><col><col><col></colgroup><tbody><tr>
 <th style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;"></th><th colspan="2" style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Model 1</th><th colspan="2" style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Model 2</th><th colspan="2" style="vertical-align: top; text-align: center; white-space: normal; border-style: solid solid solid solid; border-width: 0.8pt 0pt 0.4pt 0pt;    padding: 6pt 6pt 6pt 6pt; font-weight: normal;">Model 3</th></tr>
 <tr>
@@ -456,24 +617,28 @@ F-statistic: 1.084e+04 on 1 and 888 DF,  p-value: &lt; 2.2e-16</code></pre>
 </tbody></table>
 
 </div>
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_summs</span>(fit,fit1, fit2)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">effect_plot</span>(fit2, <span class="at">pred =</span> Sector<span class="fl">.24</span>, <span class="at">interval =</span> <span class="cn">TRUE</span>, <span class="at">plot.points =</span> <span class="cn">FALSE</span>)<span class="sc">+</span><span class="fu">coord_flip</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-19-2.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-20-2.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">effect_plot</span>(fit2, <span class="at">pred =</span> RevenuePercentChange<span class="fl">.24</span>, <span class="at">interval =</span> <span class="cn">TRUE</span>, <span class="at">plot.points =</span> <span class="cn">FALSE</span>)<span class="sc">+</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_log10</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="script00_files/figure-html/unnamed-chunk-19-3.png" class="img-fluid figure-img" width="672"></p>
+<p><img src="script00_files/figure-html/unnamed-chunk-20-3.png" class="img-fluid figure-img" width="672"></p>
 </figure>
 </div>
 </div>
@@ -481,12 +646,22 @@ F-statistic: 1.084e+04 on 1 and 888 DF,  p-value: &lt; 2.2e-16</code></pre>
 </section>
 <section id="autres-modèles" class="level2">
 <h2 class="anchored" data-anchor-id="autres-modèles">Autres modèles</h2>
+<section id="modèle-logistique" class="level3">
+<h3 class="anchored" data-anchor-id="modèle-logistique">modèle logistique</h3>
 <ul>
 <li>sur variable binaire : modèle logit</li>
-<li>sur variable de dénombrement : modèle de poisson</li>
+<li>sur variable de dénombrement : modèle de Poisson</li>
 <li>sur variable de durée : modèle de Cox</li>
 </ul>
 <div style="page-break-after: always;"></div>
+</section>
+<section id="modèles-à-décomposition-derreurs" class="level3">
+<h3 class="anchored" data-anchor-id="modèles-à-décomposition-derreurs">modèles à décomposition d’erreurs</h3>
+<p>C’est le cas des panels par exemple: chaque individu observé sur la variable <span class="math inline">\(j\)</span> l’est dans le pays <span class="math inline">\(g\)</span> et au moment <span class="math inline">\(t\)</span> . On parle aussi de modèles hiérarchique.</p>
+<p><span class="math display">\[
+y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
+\]</span></p>
+</section>
 </section>
 </section>
 <section id="références" class="level1 unnumbered">

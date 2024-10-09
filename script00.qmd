@@ -9,16 +9,17 @@ abstract: |
   Ce papier introduit à l'utilisation de r dans l'environnement quarto pour les analyses statistiques fondamentales de la recherche en gestion. Il sert aussi de modèle (template) pour les travaux des étudiants.
   On examine des distributions, on calcule des moyennes, on les compare et on les teste, on calcule des corrélations. On explore quelques techniques d'analyses de données à la française et on conclue sur un peu d'économétrie
 execute:
-  echo: false
+  code-fold: true
   message: false
   warning: false
-  code-fold: true
 keywords: 
   - r stat
   - ggplot
   - tests
+  - anova
   - regression
   - clustering
+  - fortune
 bibliography: biblio.bib
 biblio-style: unsrt
 output: rticles::arxiv_article
@@ -28,25 +29,30 @@ output: rticles::arxiv_article
 
 # Introduction
 
-Il nous faut des outils et des données. 
+Le cas que nous allons traité est celui des classements Fortune 1000 pour 2024 et 2023. On va se donner un but d'étude : examiner quels facteurs affectent la capitalisation boursière de ces 1000 entreprises. 
+
+
+Il nous faut des outils, les packages, et des données que l'on va mettre en forme. 
 
 ## Les packages
 
-Notre boite à outils essentielle est `tidyverse`, de @wickham_welcome_2019. On en découvrira l'[univers ici](https://www.tidyverse.org/packages/)
+La boite à outils essentielle est `tidyverse`, de @wickham_welcome_2019. On en découvrira l'[univers ici](https://www.tidyverse.org/packages/), elle nous permettra de manipuler les tableaux de données, et de produire des graphes élégant. Elle s'appuie sur une grammaire des données et une grammaire des graphiques. 
 
 ```{r}
 library(tidyverse) #outil de base(dplyr+ggplot+...)
 library(rstatix) # pour tout les test en tidy...
 library(FactoMineR) #ACP AFC et clustering
 library(factoextra)
-library(flextable) #pour faire de joli tableau
+library(flextable) #pour faire de jolis tableaux
 library(scales) #un accessoire de ggplot
+library(jtools) # pour de meilleures présentations des résultats des modèles de régressions
+library(ggrepel) # un complément de ggplot utile 
 
 ```
 
 ## Lecture du fichier
 
-Voici la [source des données](https://www.kaggle.com/datasets/jeannicolasduval/2024-fortune-1000-companies) du Fortune 1000 de 2024 et celle de [2023](https://www.kaggle.com/datasets/jeannicolasduval/2023-fortune-1000-companies-info) . On charge les fichiers et on les compile en un seul `dataframe`
+Voici la [source des données](https://www.kaggle.com/datasets/jeannicolasduval/2024-fortune-1000-companies) du Fortune 1000 de 2024 et celles de [2023](https://www.kaggle.com/datasets/jeannicolasduval/2023-fortune-1000-companies-info) . On charge les fichiers et on les compile en un seul `dataframe`, le format ordinaire des données que l'on manipule en `r`. On en profite pour introduire quelques manipulations de données avec [`dplyr`](https://dplyr.tidyverse.org/), un des packages clé de la suite `tidyverse`. 
 
 ```{r}
 
@@ -56,25 +62,36 @@ df1 <- read_csv("fortune1000_2024.csv")|>
   rename(MarketCap_March=MarketCap_March28_M,
          Best_Companies=Best_Companies_to_Work_For)
 
-df_2024 <- read_csv("fortune1000_2023.csv")|>
+df2 <- read_csv("fortune1000_2023.csv")|>
   mutate(Year="2023")%>%
   rename(MarketCap_March=MarketCap_March31_M)
 
-df_tot<- rbind(df1,df_2024) #le fichier superpose l'ensemble des observations
+df_tot<- rbind(df1,df2) #le fichier superpose l'ensemble des observations
 
 ```
 
-Pour garder les mêmes entreprises, et avoir leur données 2024 et 2023, on réalise une jointure à gauche (les données de 2024 sont mises à jour avec les données 2023)
+Une autre stratégie pourrait être de s'intéresser aux entreprises du classement 2024, mais en les enrichissant des données de 2023 ( si elle étaient déjà dans le classements. On réalise une jointure à gauche (les données de 2024 sont mises à jour avec les données 2023). On utilise `dplyr`pour effectuer l'opération. Pour les jointures on consultera [ce document](https://perso.ens-lyon.fr/lise.vaudor/combinaisons-et-jointures-de-tables-avec-dplyr/).
 
 ```{r}
-
 #ici on met à jour les données de 2024 avec celles de 2023
 df_2024 <- df1 %>%
-  left_join(df_2024, 
+  left_join(df2, 
             by = "Company",
             suffix = c(".23", ".24"))
-head(df_2024)
 
+foo<-df_2024%>%
+  select(Rank.24,Company, Rank.23,MarketCap_Updated_M.24, Number_of_employees.24, Revenues_M.24)%>%
+  filter(Rank.24<21)%>%
+  arrange(Rank.24)%>%
+  mutate(cap_per_employee=MarketCap_Updated_M.24/Number_of_employees.24)
+
+#ici on utilise flextable pour faire de jolis tableaux
+ft <- flextable(foo)
+ft <- theme_vanilla(ft)
+ft <- add_footer_lines(ft, "")
+ft <- color(ft, part = "footer", color = "#666666")
+ft <- set_caption(ft, caption = "Les 20 premiers du Fortune1000 2024")
+ft
 ```
 
 # Analyse univariée
@@ -108,7 +125,7 @@ ggplot(df1, aes(x=MarketCap_March ))+
 Avec quelques améliorations on obtient ceci:
 
 ```{r}
-ggplot(df1, aes(x=MarketCap_March/1000 ))+ #les données sont en millions , on les transforment en milliards
+ggplot(df1, aes(x=MarketCap_March/1000 ))+ #les données sont en millions , on les transforme en milliards de$
   geom_histogram(fill="pink2", alpha=.5)+
   labs(title="Distribution du chiffre d'affaires des 1000 de Fortune (2024)",
        y = "Fréquence",
@@ -117,14 +134,19 @@ ggplot(df1, aes(x=MarketCap_March/1000 ))+ #les données sont en millions , on l
   scale_x_continuous(trans='log10', labels = scales::label_comma())
 ```
 
-## Une variable qualitative
+## Analyser la distribution d'une variable qualitative
 
-On commence à compter
+On commence à compter le nombre d'occurrences par modalité. On analyse la variable secteur, on veut connaitre la fréquences des 1000 parmi les secteurs d'activités. 
 
 ```{r}
 
-table(df1$Sector)
+sector<- table(df1$Sector) |> #c'est une fonction de base de r
+  as.data.frame() |> # le résultat de table est un vecteur, un data frame est un format plus utile
+  arrange(desc(Freq))
 
+ft<-flextable(sector)
+
+ft
 ```
 
 Un diagramme en barre
@@ -151,22 +173,42 @@ ggplot(foo, aes(x=reorder(Sector,n), y=n))+
 
 ```
 
+
+# Comparons les moyennes
+
+On va comparer les capitalisations médianes par secteur et par année. 
+
+```{r}
+foo<- df_tot |>
+  group_by(Sector, Year)%>%
+  summarise(n=n(),
+            median=median(MarketCap_Updated_M, na.rm=TRUE) )
+
+ggplot(foo, aes(x=reorder(Sector,median), y=median, group=Year))+geom_line(aes(color=Year))+ coord_flip()
+```
+Un test d'analyse de variance serait bienvenu. Ses résultats sont clairs : si on peut rejeter avec certitude l'hypothèse de moyennes égales entre tous les secteurs, et donc accepter que certains ont des moyenne plus fortes ou plus plaibles que les autres, et qu'il y a donc un effet sectoriel, la différence d'une année à l'autre n'est pas significative. Une p-value de .1724 indique un risque élevé que la réalité soit une absence de différence, c'est une hypothèse qu'on ne peut écarter.En moyenne les capitalisations n'ont pas changé.
+
+```{r}
+fit<-lm(MarketCap_Updated_M~Sector+Year, df_tot)
+anova(fit)
+```
+
 # Corrélation de deux variables quantitatives
 
 La capitalisation est l'actualisation du profit. On s'attend à ce que les deux variables soient fortement corrélées. 
 
 ```{r}
-foo <- df1 |>
+foo <- df_tot |>
   filter(!is.na(Profits_M) & !is.na(MarketCap_March))
-r <-cor(foo$Profits_M,foo$MarketCap_March)
-r
-```
 
-```{r}
+r <-round(cor(foo$Profits_M,foo$MarketCap_March),3)
 
-ggplot(foo, aes(y=log10(Profits_M), x= log10(MarketCap_March), group= Year))+
+ggplot(foo, aes(x=Profits_M, y= MarketCap_March))+
   geom_point(alpha=.5, size=1)+
-  geom_smooth(method="lm")
+  geom_text_repel(aes(label=Company), size=3)+
+  geom_smooth(method="lm", color="pink")+
+  geom_smooth(method="loess", color="purple")+
+  labs(title=paste0("corrélation : ", r))
 
 ```
 
@@ -247,14 +289,6 @@ où $y_i$ représente la valeur de l'individu $i$ pour la variable que l'on cher
 
 [^1]:Pour écrire des équations en R markdown [voir](<https://rpruim.github.io/s341/S19/from-class/MathinRmd.html>)
 
-## modèles à décomposition d'erreurs
-
-C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchique. 
-
-$$
-y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
-$$
-## modèle logistique
 
 
 ## Premier exemple simple
@@ -323,10 +357,22 @@ effect_plot(fit2, pred = RevenuePercentChange.24, interval = TRUE, plot.points =
 
 ## Autres modèles
 
+
+### modèle logistique
+
 -   sur variable binaire : modèle logit
--   sur variable de dénombrement : modèle de poisson
+-   sur variable de dénombrement : modèle de Poisson
 -   sur variable de durée : modèle de Cox
 
 {{< pagebreak >}}
+
+### modèles à décomposition d'erreurs
+
+C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchique. 
+
+$$
+y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
+$$
+
 
 # Références
