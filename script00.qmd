@@ -422,29 +422,23 @@ ft
 ```
 
 
-# D'autres modèles
-
-
-D'autres spécifications de modèles de régression ont été proposés en fonction de la nature de la variables qu'on veut étudier
-
--   variable binaire : modèle logit
--   variable de dénombrement : le modèle de Poisson est fondamental
--   variable de durée : modèle de Cox est devenu un standard
-
-{{< pagebreak >}}
 
 ## modèles à décomposition d'erreurs
 
-C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques, de modèles Multi-niveaux, ou à décomposition d'erreur. Dans la formulation suivante le terme $\mu_g$ représente la variance liée à la variable de groupe.  
+C'est le cas des panels par exemple: chaque individu est observé sur la variable $j$ dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques, de modèles Multi-niveaux, de modèle à effets mixtes ou de modèle à décomposition d'erreur.  
 
-Sachant que les entreprises sont insérés dans un champs économique (le secteur ou l'Etat), on peut capturer l'effet de cette variable de second niveau. 
+Dans ce cadre d'analyse on distinguera les effets fixes (ceux des $x_{j}$) et les effets aléatoires $\mu_g$ qui représente l'effet de la variable groupe.  
 
 
 $$
 y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{ijg} +\mu_g+\epsilon_{ig}
 $$
 
-pour la mise en oeuvre on utilise le package lme4. Le terme entre parenthèse représente l'effet aléatoire.
+Sachant que les entreprises sont insérés dans un champs économique (le secteur ou l'Etat), on peut capturer l'effet de cette variable de second niveau. pour la mise en oeuvre on utilise le package `lme4`. 
+
+Le terme entre parenthèse représente l'effet aléatoire. Le premier modèle prend en compte l'Etat où se trouve le siège (un effet d'agglomération), le second modèle le secteur (l'effet de champs), le troisième prend en compte ces deux facteurs de manière additive.
+
+Les paramètres des effets fixes restent stables, la prise en compte de ces deux facteurs pèsent 1% de la variance. Finalement assez peu
 
 
 ```{r}
@@ -466,5 +460,23 @@ export_summs(model1,model2,model3,
 
 
 ```
+# Conclusion
+
+
+D'autres spécifications de modèles de régression ont été proposées en fonction de la nature de la variables qu'on veut étudier
+
+-   variable binaire : modèle logit
+-   variable de dénombrement : le modèle de Poisson est fondamental
+-   variable de durée : modèle de Cox est devenu un standard
+
+Mais le grand progrès de l'économétrie, ce sont les modèles causaux et l'idée de contre factuel.
+
+-   modèles de discontinuité
+-   modèles DiD. 
+
+
+
+{{< pagebreak >}}
+
 
 # Références
