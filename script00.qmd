@@ -284,16 +284,16 @@ le modèle formellement s'écrit[^1] de la manière suivante :
 $$
 y_i=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j} + \epsilon_i
 $$
-où $y_i$ représente la valeur de l'individu $i$ pour la variable que l'on cherche à expliquer $y$. Les $x_{ij}$ représentent les valeurs de la variable $$j$$ pour l'individu $$i$$ . Les paramètres $$\beta_j$$ sont les valeurs que l'on cherche à estimer, en minimisant la comme du carrée des erreurs. ( principe des moindres carrés)
+où $y_i$ représente la valeur de l'individu $i$ pour la variable que l'on cherche à expliquer $y$. Les $x_{ij}$ représentent les valeurs de la variable $j$ pour l'individu $i$ . Les paramètres $\beta_j$ sont les valeurs que l'on cherche à estimer, en minimisant la comme du carré des erreurs. (principe des moindres carrés ordinaires)[https://fr.wikipedia.org/wiki/R%C3%A9gression_lin%C3%A9aire_multiple]
 
 
 [^1]:Pour écrire des équations en R markdown [voir](<https://rpruim.github.io/s341/S19/from-class/MathinRmd.html>)
 
 
 
-## Premier exemple simple
+## Un premier example
 
-On s'intéresse à la capitalisation sur le marché en 2024. Il y a de bonnes raisons qu'elle soit liée à celle de l'année précédentes. Examinons la relation. 
+On s'intéresse à la capitalisation sur le marché en 2024. Il y a de bonnes raisons qu'elle soit liée à celle de l'année précédente. Examinons la relation. 
 
 ```{r}
 df_2024<-df_2024%>%
@@ -351,7 +351,7 @@ export_summs(fit, fit1,fit2,
               number_format = "%.3f")
 ```
 
-Voici la representaion graphique sous forme de tree plot équivalente. 
+Voici la représentation graphique sous forme de tree plot équivalente. 
 
 ```{r}
 
@@ -361,7 +361,7 @@ plot_summs(fit,fit1, fit2)
 ```
 
 
-On peut souhaiter miux se représenter les effets de chacune des variables . Les diagramme d'effets marginaux sont utiles à cette fin. Ils représente l'effet moyen des modalités d'une variable, sous contrôle des autres variables.
+On peut souhaiter mieux se représenter les effets de chacune des variables. Les diagramme d'effets marginaux sont utiles à cette fin. Ils représentent l'effet moyen des modalités d'une variable, sous contrôle des autres variables.On découvre que l'effet de l'accroissement de chiffre d'affaire a un effet sensible quand les ventes doublent et au-delà. Un effet de fusion ? Quant aux secteurs d'activité le secteur du BTP est associé aux plus faibles capitalisation, la santé et la distribution étant les principaux bénéficiaires. 
 
 
 ```{r}
@@ -373,6 +373,52 @@ effect_plot(fit2, pred = RevenuePercentChange.24, interval = TRUE, plot.points =
 effect_plot(fit2, pred = Sector.24, interval = TRUE, plot.points = FALSE)+coord_flip()
 
 
+```
+
+### les interactions
+
+Dans un projet de recherche il arrive souvent que l'on cherche à tester la relation entre une variable Y et une variable explicative X mais que l'on soupçonne que celle-ci varie selon les situations Z. Prenons par exemple cette vieille hypothèse de la contingence et l'effet de l'incertitude de l'environnement sur la performance organisationnelle. Cet effet peut varier selon le type d'organisations. Certaines sont plutôt mécanistes (le modèle bureaucratique et hiérarchique), d'autres plutôt organiques ( modèle d'autonomie et d'interaction). Les premières sont efficaces quand l'incertitude de l'environnement est faible et que la plannification est le moyen le plus rationnel d'opérer. Les secondes le sont au contraire quand l'environnement est volatil, incertain, turbulent.
+
+On peut représenter ces relations dans le diagramme suivant :
+
+On peut aussi les formaliser :
+
+$$Perf= a_0+a_1Incertitude$$ 
+
+et, avec $Org \in [0,1]$ : 
+$$a_1=b_0+b_10rg$$
+
+En remplaçant et en arrangeant on obtient :
+
+$$Perf= a_0+b_0Org+ b_1OrgIncertitude$$
+
+Le terme multiplicatif qui apparaît est est le terme d'interaction. Dans l'exemple simplifié puisque la variable organisation prend pour valeur 1 ou 0, selon qu'elle soit mécaniste où organique. 
+
+Le résultat peut surprendre, mais en regardant de plus prêt, la causalité est inversée ! Les entreprises dirigées par des femmes et à fortes croissance ont de faibles capitalisation. 
+
+
+
+```{r}
+fit1<-lm( MarketCap_Updated_M.24_ln ~ RevenuePercentChange.24*FemaleCEO.24 + Sector.24 +MarketCap_Updated_M.23_ln, df_2024)
+fit2<-lm( MarketCap_Updated_M.24_ln ~ RevenuePercentChange.24+FemaleCEO.24 + Sector.24 +MarketCap_Updated_M.23_ln, df_2024)
+library(interactions)
+interact_plot(fit1, pred = RevenuePercentChange.24, modx = FemaleCEO.24, interval = TRUE)+scale_x_log10()
+
+export_summs(fit2,fit1,
+             error_pos="right",
+              coefs = c("croissance du CA" = "RevenuePercentChange.24",
+                        "Female"="FemaleCEO.24yes",
+                        "Interaction"="RevenuePercentChange.24:FemaleCEO.24yes",
+                         "Capitalisation n-1" = "MarketCap_Updated_M.23_ln"), 
+              number_format = "%.3f")
+
+
+foo<-df_2024 %>%
+  filter(FemaleCEO.24=="yes" & RevenuePercentChange.24 >50)%>%
+  select(Company,Sector.24,RevenuePercentChange.24,FemaleCEO.24, MarketCap_Updated_M.24)
+
+ft<-flextable(foo)
+ft
 ```
 
 
@@ -392,7 +438,7 @@ D'autres spécifications de modèles de régression ont été proposés en fonct
 C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques. 
 
 $$
-y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
+y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{ijg} +\mu_g+\epsilon_{ig}
 $$
 
 
