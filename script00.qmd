@@ -330,7 +330,11 @@ Effectuons la régression.
 fit<-lm( MarketCap_Updated_M.24_ln ~ MarketCap_Updated_M.23_ln, df_2024)
 summary(fit)
 ```
-Il est temps d'introduire d'autre variables.
+Il est temps d'introduire d'autre variables. On va se contenter d'introduire deux variables :
+
+- l'accroissement du chiffre d'affaires qui signalent la dynamique de l'entreprise et sa capacité à produire du profit, pour autant que les coût ne croissent en égale proportion.
+
+- le secteur d'activité, une variable qualitative, qui sera recodée par hot encoding au regard d'une catégorie de référence.
 
 
 
@@ -345,30 +349,47 @@ library(jtools)
 export_summs(fit, fit1,fit2,
              error_pos="right",
               number_format = "%.3f")
+```
+
+Voici la representaion graphique sous forme de tree plot équivalente. 
+
+```{r}
 
 plot_summs(fit,fit1, fit2)
 
-effect_plot(fit2, pred = Sector.24, interval = TRUE, plot.points = FALSE)+coord_flip()
 
-effect_plot(fit2, pred = RevenuePercentChange.24, interval = TRUE, plot.points = FALSE)+
-  scale_x_log10()
 ```
 
 
-## Autres modèles
+On peut souhaiter miux se représenter les effets de chacune des variables . Les diagramme d'effets marginaux sont utiles à cette fin. Ils représente l'effet moyen des modalités d'une variable, sous contrôle des autres variables.
 
 
-### modèle logistique
+```{r}
 
--   sur variable binaire : modèle logit
--   sur variable de dénombrement : modèle de Poisson
--   sur variable de durée : modèle de Cox
+
+effect_plot(fit2, pred = RevenuePercentChange.24, interval = TRUE, plot.points = FALSE)+
+  scale_x_log10()
+
+effect_plot(fit2, pred = Sector.24, interval = TRUE, plot.points = FALSE)+coord_flip()
+
+
+```
+
+
+# D'autres modèles
+
+
+D'autres spécifications de modèles de régression ont été proposés en fonction de la nature de la variables qu'on veut étudier
+
+-   variable binaire : modèle logit
+-   variable de dénombrement : le modèle de Poisson est fondamental
+-   variable de durée : modèle de Cox est devenu un standard
 
 {{< pagebreak >}}
 
-### modèles à décomposition d'erreurs
+## modèles à décomposition d'erreurs
 
-C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchique. 
+C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques. 
 
 $$
 y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{i,j,g} + \rho_t+\mu_g+\epsilon_i
