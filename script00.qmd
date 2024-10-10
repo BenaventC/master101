@@ -435,11 +435,36 @@ D'autres spécifications de modèles de régression ont été proposés en fonct
 
 ## modèles à décomposition d'erreurs
 
-C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques. 
+C'est le cas des panels par exemple: chaque individu observé sur la variable $j$ l'est dans le pays $g$ et au moment $t$ . On parle aussi de modèles hiérarchiques, de modèles Multi-niveaux, ou à décomposition d'erreur. Dans la formulation suivante le terme $\mu_g$ représente la variance liée à la variable de groupe.  
+
+Sachant que les entreprises sont insérés dans un champs économique (le secteur ou l'Etat), on peut capturer l'effet de cette variable de second niveau. 
+
 
 $$
 y_{i,g}=\beta_0+\sum_{j = 1}^{k} \beta_jx_{ijg} +\mu_g+\epsilon_{ig}
 $$
 
+pour la mise en oeuvre on utilise le package lme4. Le terme entre parenthèse représente l'effet aléatoire.
+
+
+```{r}
+library(lme4)
+
+model1 <- lmer(MarketCap_Updated_M.24_ln ~ RevenuePercentChange.24*FemaleCEO.24 +MarketCap_Updated_M.23_ln+  (1 | HeadquartersState.24), df_2024 )
+model2 <- lmer(MarketCap_Updated_M.24_ln ~ RevenuePercentChange.24*FemaleCEO.24 +MarketCap_Updated_M.23_ln+  (1 | Sector.24), df_2024 )
+
+model3 <- lmer(MarketCap_Updated_M.24_ln ~ RevenuePercentChange.24*FemaleCEO.24 +MarketCap_Updated_M.23_ln+  (1 | Sector.24+HeadquartersState.24), df_2024 )
+
+export_summs(model1,model2,model3,
+             error_pos="right",
+              coefs = c("croissance du CA" = "RevenuePercentChange.24",
+                        "Female"="FemaleCEO.24yes",
+                        "Interaction"="RevenuePercentChange.24:FemaleCEO.24yes",
+                         "Capit. t-1" = "MarketCap_Updated_M.23_ln"), 
+             model.names = c("MLM state","MLM Sector","MLM Sector+State"),
+              number_format = "%.3f")
+
+
+```
 
 # Références
