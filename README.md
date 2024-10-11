@@ -1,1 +1,1 @@
-[Le document](https://benaventc.github.io/Master101/script00.html)
+[Le document](https://benaventc.github.io/master101/script00.html)
