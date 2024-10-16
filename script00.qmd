@@ -469,7 +469,7 @@ D'autres spécifications de modèles de régression ont été proposées en fonc
 -   variable de dénombrement : le modèle de Poisson est fondamental
 -   variable de durée : modèle de Cox est devenu un standard
 
-Mais le grand progrès de l'économétrie, ce sont les modèles causaux et l'idée de contre factuel.
+Mais le grand progrès de l'économétrie, ce sont les modèles causaux et l'idée de contre-factuel.
 
 -   modèles de discontinuité
 -   modèles DiD. 
